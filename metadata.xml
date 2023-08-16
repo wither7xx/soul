@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+    <name>Soul</name>
+    <directory>soul</directory>
+    <id>0</id>
+    <description></description>
+    <version>0.0.0.1</version>
+    <visibility>Private</visibility>
+    <tag id="Lua"/>
+    <tag id="Items"/>
+</metadata>

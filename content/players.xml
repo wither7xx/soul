@@ -1,0 +1,12 @@
+<players root="gfx/characters/costumes/" 
+         portraitroot="gfx/ui/stage/" 
+         nameimageroot="gfx/ui/boss/">
+	<player name="Taoyufei" skin="taoyufei.png" hp="6"
+          nameimage="playername_taoyufei.png" 
+          portrait="playerportrait_taoyufei.png" skinColor="-1"
+		  birthright="???" />
+	<player name="Tainted Taoyufei" skin="taoyufei.png" hp="6"
+          nameimage="playername_taoyufei.png" bSkinParent="Taoyufei" 
+          portrait="playerportrait_taoyufei.png" skinColor="-1"
+		  birthright="???" />
+</players>

@@ -1,0 +1,50 @@
+<!--
+<ItemPools>
+	<Pool Name="treasure">
+		<Item Name="xxxxxx"  Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+	<Pool Name="library">
+		
+	</Pool>
+	<Pool Name="devil">
+	</Pool>
+	<Pool Name="shop">
+	</Pool>
+	<Pool Name="craneGame">
+	</Pool>
+	<Pool Name="bombBum">
+	</Pool>
+	<Pool Name="secret">
+	</Pool>
+	<Pool Name="greedTreasure">
+	</Pool>
+	<Pool Name="greedShop">
+	</Pool>
+	<Pool Name="greedDevil">
+	</Pool>
+	<Pool Name="greedLibrary">
+	</Pool>
+</ItemPools>
+-->
+
+<ItemPools>
+	<Pool Name="treasure">
+		<Item Name="Soul Crystal"  Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+		<Item Name="The Way To Steal The Soul"  Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+	<Pool Name="library">
+		<Item Name="The Way To Steal The Soul"  Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+	<Pool Name="devil">
+		<Item Name="Soul Bet"  Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+	<Pool Name="angel">
+		<Item Name="Soul Contract" Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+	<Pool Name="greedDevil">
+		<Item Name="Soul Bet"  Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+	<Pool Name="greedAngel">
+		<Item Name="Soul Contract" Weight="1" DecreaseBy="1" RemoveOn="0.1"/>
+	</Pool>
+</ItemPools>
