@@ -1,6 +1,8 @@
 ﻿<items gfxroot="gfx/items/" version="1" deathanm2="gfx/death items.anm2">
-	<active id="1" name="Soul Crystal" description="???" gfx="soul_crystal.png" maxcharges ="6" quality="3" tags="offensive"/>
-	<active id="2" name="The Way To Steal The Soul" description="???" gfx="way_to_steal_soul.png" maxcharges ="7" chargetype="special" initcharge="0" quality="3" tags="book"/>
+	<active id="1" name="Soul Crystal" description="It has a strange radiance" gfx="soul_crystal.png" maxcharges ="6" quality="2" tags="offensive"/>
+	<active id="2" name="The Way To Steal The Soul" description="All your soul are belong to us" gfx="way_to_steal_soul.png" maxcharges ="7" chargetype="special" initcharge="0" quality="3" tags="book"/>
 	<passive id="3" name="Soul Bet" description="Chip" gfx="soul_bet.png" quality="2" tags="offensive summonable"/>
-	<passive id="4" name="Soul Contract" description="Token" gfx="soul_contract.png" quality="2" tags="offensive summonable"/>
+	<passive id="4" name="Soul Contract" description="Token" gfx="soul_contract.png" quality="3" tags="offensive summonable"/>
+
+	<trinket id="1" name="Red Crystal Necklace" description="Aegis amulet" gfx="red_crystal_necklace.png" cache="luck"/>
 </items>

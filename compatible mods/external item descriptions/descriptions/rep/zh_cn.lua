@@ -1,10 +1,20 @@
-local modCollectibleType = Soul.modCollectibleType
+local CM_EID_Desc_zh_cn = {}
 
-EIDtexts["zh_cn"].Collectibles = {
-	--[[modCollectibleType.] = {
+local modCollectibleType = Soul.modCollectibleType
+local modTrinketType = Soul.modTrinketType
+local modPlayerType = Soul.modPlayerType
+
+local lang = "zh_cn"
+
+CM_EID_Desc_zh_cn.Collectibles = {
+	--[[	
+	[modCollectibleType.XXX] = {
 		Name = "",
 		Description = "",
-	},]]
+		bookOfVirtuesWisps = "",
+		bookOfBelialBuffs = "",
+	},
+	]]
 	[modCollectibleType.COLLECTIBLE_SOUL_CRYSTAL] = {
 		Name = "桃灵之魄",
 		Description = "{{Rune}} 生成1随机魂石",
@@ -22,3 +32,12 @@ EIDtexts["zh_cn"].Collectibles = {
 		Description = "进入新一层时：#如果上一层击败敌人数量不小于35，则获得一个等级大于1的道具#否则，获得一张随机卡牌",
 	},
 }
+
+CM_EID_Desc_zh_cn.Trinkets = {
+	[modTrinketType.TRINKET_RED_CRYSTAL_NECKLACE] = {
+		Name = "红水晶吊坠",
+		Description = "↑ {{Luck}} +1运气#进入新房间时有7%几率产生7秒护盾",
+	},
+}
+
+return CM_EID_Desc_zh_cn

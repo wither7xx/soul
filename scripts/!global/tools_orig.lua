@@ -7,21 +7,21 @@ local Maths = Soul.Global.Maths
 local SoulCallbacks = Soul.SoulCallbacks
 local modEffectVariant = Soul.modEffectVariant
 
---游戏数据相关
+--初始化游戏数据
 function Tools:GameDataInit(is_continued)
 	if not is_continued then
 		Soul.TempData.GameData = {}
 	end
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.GameDataInit)
+ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.GameDataInit, 0)
 
---NPC实体对象数据相关
+--初始化NPC数据
 function Tools:NPCDataInit(is_continued)
 	if not is_continued then
 		Soul.TempData.NPCData = {}
 	end
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.NPCDataInit)
+ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.GameDataInit, 0)
 
 function Tools:GetNPCData(entity)
 	local idx = tostring(GetPtrHash(entity))
@@ -29,30 +29,19 @@ function Tools:GetNPCData(entity)
 	return Soul.TempData.NPCData[idx]
 end
 
---效果实体对象数据相关
-function Tools:EffectDataInit(is_continued)
-	if not is_continued then
-		Soul.TempData.EffectData = {}
-	end
-end
-ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.EffectDataInit)
-
-function Tools:GetEffectData(effect)
-	local idx = tostring(GetPtrHash(effect))
-	Soul.TempData.EffectData[idx] = Soul.TempData.EffectData[idx] or {}
-	return Soul.TempData.EffectData[idx]
-end
-
 --初始化角色数据、用户寄存器与角色静态数据
 function Tools:PlayerDataInit(is_continued)
 	if not is_continued then
 		Soul.TempData.PlayerData = {}
+		Soul.TempData.PlayerData_UserRegister = {}
+		Soul.TempData.PlayerData_Static["UserNum"] = 0
 	end
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.PlayerDataInit)
+ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.PlayerDataInit, 0)
 
 --取角色索引（ignore_pairing设为false）/用户索引（ignore_pairing设为true），返回整数
 function Tools:GetPlayerIndex(player, ignore_pairing)
+	local CollectibleRNG = player:GetCollectibleRNG(CollectibleType.COLLECTIBLE_SAD_ONION)
 	local collectible_type = CollectibleType.COLLECTIBLE_SAD_ONION
 	local player_type = player:GetPlayerType()
 	--换另一个道具的RNG以区分表双子/里拉的表形态和里形态
@@ -60,16 +49,11 @@ function Tools:GetPlayerIndex(player, ignore_pairing)
 		if player_type == PlayerType.PLAYER_LAZARUS2_B then
 			collectible_type = CollectibleType.COLLECTIBLE_INNER_EYE
 		end
-		local CollectibleRNG = player:GetCollectibleRNG(collectible_type)
-		return tostring(CollectibleRNG:GetSeed())
 	else
-		if player.Parent and player.Parent:ToPlayer() then
-			player = player.Parent:ToPlayer()
-		end
 		player = player:GetMainTwin()
-		local CollectibleRNG = player:GetCollectibleRNG(collectible_type)
-		return tostring(CollectibleRNG:GetSeed())	--注：由于存储器会自动补全数组部分的缺失值，故为了避免浪费存储空间，作为键的种子的tostring()不可省略（即采用散列表而非数组）
 	end
+	local CollectibleRNG = player:GetCollectibleRNG(collectible_type)
+	return tostring(CollectibleRNG:GetSeed())
 end
 
 --取角色数据，如果出现新角色（如表双子/里拉/饰品罗），则将新加入的部分初始化
@@ -82,87 +66,37 @@ end
 --取角色道具数据
 function Tools:GetPlayerCollectibleData(player, collectible_type)
 	local data = Tools:GetPlayerData(player)
-	local item_config_item = Isaac.GetItemConfig():GetCollectible(collectible_type)
-	if item_config_item and item_config_item.Name then
-		local idx = "Collectible:" .. string.gsub(item_config_item.Name, "%s", "_")
-		data[idx] = data[idx] or {}
-		return data[idx]
+	if collectible_type == nil or collectible_type <= 0 then
+		return data
 	end
-	local idx_null = "Collectible:Null"
-	data[idx_null] = data[idx_null] or {}
-	return data[idx_null]
-end
-
---取角色饰品数据
-function Tools:GetPlayerTrinketData(player, trinket_type)
-	local data = Tools:GetPlayerData(player)
-	local item_config_item = Isaac.GetItemConfig():GetTrinket(trinket_type)
-	if item_config_item and item_config_item.Name then
-		local idx = "Trinket:" .. string.gsub(item_config_item.Name, "%s", "_")
-		data[idx] = data[idx] or {}
-		return data[idx]
-	end
-	local idx_null = "Trinket:Null"
-	data[idx_null] = data[idx_null] or {}
-	return data[idx_null]
-end
-
---取角色卡牌数据
-function Tools:GetPlayerCardData(player, card)
-	local data = Tools:GetPlayerData(player)
-	local item_config_card = Isaac.GetItemConfig():GetCard(card)
-	if item_config_card and item_config_card.Name then
-		local idx = "Card:" .. string.gsub(item_config_card.Name, "%s", "_")
-		data[idx] = data[idx] or {}
-		return data[idx]
-	end
-	local idx_null = "Card:Null"
-	data[idx_null] = data[idx_null] or {}
-	return data[idx_null]
-end
-
---取角色一般拾取物数据
-function Tools:GetPlayerPickupData(player, pickup_variant)
-	local data = Tools:GetPlayerData(player)
-	if pickup_variant == nil or pickup_variant <= 0 then
-		local idx_null = "Pickup:Null"
-		data[idx_null] = data[idx_null] or {}
-		return data[idx_null]
-	end
-	local idx = "Pickup:" .. tostring(pickup_variant)
+	local idx = tostring(collectible_type)
 	data[idx] = data[idx] or {}
 	return data[idx]
 end
 
-local function GetUserIdxList()
-	local list = {}
-	local user_num = 0
-	local NumPlayers = Game():GetNumPlayers()
-	for p = 0, NumPlayers - 1 do
-		local player = Isaac.GetPlayer(p)
-		local idx_user = Tools:GetPlayerIndex(player, true)
-		if list[idx_user] == nil then
-			list[idx_user] = user_num
-			user_num = user_num + 1
-		end
+
+--检查用户寄存器，如果出现新用户（如由单人模式变为多人模式时），则将新加入的部分初始化
+function Tools:CheckUserNum(player)
+	local idx_user = Tools:GetPlayerIndex(player, true)
+	if Soul.TempData.PlayerData_UserRegister[idx_user] == nil then
+		Soul.TempData.PlayerData_UserRegister[idx_user] = Soul.TempData.PlayerData_Static["UserNum"]
+		Soul.TempData.PlayerData_Static["UserNum"] = Soul.TempData.PlayerData_Static["UserNum"] + 1
 	end
-	return list, user_num
 end
+ModRef:AddPriorityCallback(ModCallbacks.MC_POST_PLAYER_UPDATE, CallbackPriority.IMPORTANT, Tools.CheckUserNum, 0)
 
 --取当前用户数目，返回整数
 function Tools:GetUserNum()
-	local _, num = GetUserIdxList()
-	return num
+	return Soul.TempData.PlayerData_Static["UserNum"] or 1
 end
 
 --由角色对象取用户索引，返回整数
 function Tools:GetUserIdx(player)
 	local idx_user = Tools:GetPlayerIndex(player, true)
-	local list = GetUserIdxList()
-	return list[idx_user] or 0
+	return Soul.TempData.PlayerData_UserRegister[idx_user] or 0
 end
 
---角色数据相关：其他函数
+--角色数据相关其他函数
 function Tools:PlayerData_AddAttribute(player, key, starting_value)
 	local idx = Tools:GetPlayerIndex(player, false)
 	if Soul.TempData.PlayerData[idx] and Soul.TempData.PlayerData[idx][key] == nil then
@@ -198,15 +132,14 @@ function Tools:IsOriginalCharacter(player)
 	return player_type < PlayerType.NUM_PLAYER_TYPES
 end
 
---判断collectible_type是否为不占被动槽位的道具（主动道具、任务道具、长子权），返回逻辑
-function Tools:IsNoPassiveSlotItem(collectible_type)
-	if collectible_type == CollectibleType.COLLECTIBLE_BIRTHRIGHT then
+--判断item是否为不占被动槽位的道具（主动道具、任务道具、长子权），返回逻辑
+function Tools:IsNoPassiveSlotItem(item)
+	if item == CollectibleType.COLLECTIBLE_BIRTHRIGHT then
 		return true
 	end
-	local item_config_item = Isaac.GetItemConfig():GetCollectible(collectible_type)
-	if item_config_item then
-		if item_config_item.Type == ItemType.ITEM_ACTIVE 
-		or item_config_item:HasTags(ItemConfig.TAG_QUEST) then
+	local item_config = Isaac.GetItemConfig():GetCollectible(item)
+	if item_config then
+		if item_config.Type == ItemType.ITEM_ACTIVE or item_config:HasTags(ItemConfig.TAG_QUEST) then
 			return true
 		end
 	end
@@ -216,10 +149,9 @@ end
 --统计所有道具，返回数组
 function Tools:GetAllSlotItem()
 	local ItemList = {}
-	local item_config = Isaac.GetItemConfig()
-	for id = 1, item_config:GetCollectibles().Size - 1 do
-		if item_config:GetCollectible(id) then
-			table.insert(ItemList, id)
+	for i = 1, Isaac.GetItemConfig():GetCollectibles().Size do
+		if Isaac.GetItemConfig():GetCollectible(i) then	--此处条件不可忽略，否则当i的ItemConfig值为nil时会报错
+			table.insert(ItemList, i)
 		end
 	end
 	return ItemList
@@ -228,26 +160,21 @@ end
 --统计所有不占被动槽位的道具，返回数组
 function Tools:GetNoPassiveSlotItem()
 	local ItemList = {}
-	for id = 1, Isaac.GetItemConfig():GetCollectibles().Size - 1 do
-		if Tools:IsNoPassiveSlotItem(id) then
-			table.insert(ItemList, id)
+	for i = 1, Isaac.GetItemConfig():GetCollectibles().Size do
+		if Tools:IsNoPassiveSlotItem(i) then
+			table.insert(ItemList, i)
 		end
 	end
 	return ItemList
 end
 
---统计所有品质为quality的道具，返回数组（过滤隐藏道具和任务道具；可选择是否过滤主动道具）
-function Tools:GetAllItem_ByQuality(quality, include_active)
+--统计所有品质为quality的道具，返回数组（过滤隐藏道具和任务道具）
+function Tools:GetAllItem_ByQuality(quality)
 	local ItemList = {}
-	local item_config = Isaac.GetItemConfig()
-	for id = 1, item_config:GetCollectibles().Size - 1 do
-		local item_config_item = item_config:GetCollectible(id)
-		if item_config_item then
-			if item_config_item.Quality == quality 
-			and (not item_config_item.Hidden) 
-			and (not item_config_item:HasTags(ItemConfig.TAG_QUEST)) 
-			and (include_active or item_config_item.Type ~= ItemType.ITEM_ACTIVE) then
-				table.insert(ItemList, id)
+	for i = 1, Isaac.GetItemConfig():GetCollectibles().Size do
+		if (Isaac.GetItemConfig():GetCollectible(i)) then
+			if Isaac.GetItemConfig():GetCollectible(i).Quality == quality and (not Isaac.GetItemConfig():GetCollectible(i).Hidden) and (not Isaac.GetItemConfig():GetCollectible(i):HasTags(ItemConfig.TAG_QUEST)) then
+				table.insert(ItemList, i)
 			end
 		end
 	end
@@ -255,26 +182,30 @@ function Tools:GetAllItem_ByQuality(quality, include_active)
 end
 
 --强制添加道具（如果角色（里以撒）道具槽位已满，则在角色身边生成道具）
-function Tools:AddCollectibleForcibly(player, collectible_type)
-	local can_add_collectible = true
+local NoPassiveSlotItem
+
+function Tools:AddCollectibleForcibly(player, item)
+	local canAddCollectible = true
 	if player:GetPlayerType() == PlayerType.PLAYER_ISAAC_B then
-		local slot_capacity = 8
+		local slot_capacity
 		if player:HasCollectible(CollectibleType.COLLECTIBLE_BIRTHRIGHT) then
 			slot_capacity = 12
+		else
+			slot_capacity = 8
 		end
 		local slot_remain = slot_capacity - player:GetCollectibleCount()
-		local NoPassiveSlotItem = Tools:GetNoPassiveSlotItem()
+		NoPassiveSlotItem = NoPassiveSlotItem or Tools:GetNoPassiveSlotItem()
 		for i, j in pairs(NoPassiveSlotItem) do
 			slot_remain = slot_remain + player:GetCollectibleNum(j)
 		end
 		if slot_remain <= 0 then
-			can_add_collectible = false
+			canAddCollectible = false
 		end
 	end
-	if can_add_collectible then
-		player:AddCollectible(collectible_type)
+	if canAddCollectible then
+		player:AddCollectible(item)
 	else
-		Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible_type, Game():GetRoom():FindFreePickupSpawnPosition(player.Position, 0, true), Vector(0, 0), nil)
+		Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, item, Game():GetRoom():FindFreePickupSpawnPosition(player.Position, 0, true), Vector.Zero, nil)
 	end
 	return
 end
@@ -304,8 +235,8 @@ function Tools:GetCollectibleNum_ByTags(player, tag)
 	return sum
 end
 
---随机生成/给予一个品质为quality的道具，返回整数（道具类型）
-function Tools:RandomCollectible_ByQuality(player, quality, rng, try_spawn)
+--随机生成一个品质为quality的道具，返回道具（拾取物实体对象）
+function Tools:RandomCollectible_ByQuality(player, quality, rng)
 	local DefaultCollectibleType = {
 		[0] = CollectibleType.COLLECTIBLE_POOP,
 		[1] = CollectibleType.COLLECTIBLE_LUNCH,
@@ -313,34 +244,27 @@ function Tools:RandomCollectible_ByQuality(player, quality, rng, try_spawn)
 		[3] = CollectibleType.COLLECTIBLE_STEVEN,
 		[4] = CollectibleType.COLLECTIBLE_BRIMSTONE,
 	}
-	local ItemList_ByQuality = ItemList_ByQuality or Tools:GetAllItem_ByQuality(quality, include_active)
+	local ItemList_ByQuality = ItemList_ByQuality or Tools:GetAllItem_ByQuality(quality)
 	local size = #ItemList_ByQuality
 	local rand = Maths:RandomInt(size, rng, false, true)
 	local attempts = 0
-	local collectible_type = ItemList_ByQuality[rand]
-	while collectible_type and player:HasCollectible(collectible_type) and attempts < size do
-		rand = (rand % size) + 1
+	local collectible_type = ItemList_ByQuality[rand + 1]
+	while player:HasCollectible(collectible_type) and attempts < size do
+		rand = (rand + 1) % size
 		attempts = attempts + 1
-		collectible_type = ItemList_ByQuality[rand]
+		collectible_type = ItemList_ByQuality[rand + 1]
 	end
-	if attempts >= size then
-		if (not include_active) and quality == 0 then
-			collectible_type = CollectibleType.COLLECTIBLE_SKATOLE
-		else
-			collectible_type = DefaultCollectibleType[quality] or CollectibleType.COLLECTIBLE_BREAKFAST
-		end
+	if attempts == size then
+		collectible_type = DefaultCollectibleType[quality] or CollectibleType.COLLECTIBLE_BREAKFAST
 	end
-	if try_spawn then
-		Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible_type, Game():GetRoom():FindFreePickupSpawnPosition(player.Position, 0, true), Vector(0, 0), nil)
-	end
-	return collectible_type
+	return Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible_type, Game():GetRoom():FindFreePickupSpawnPosition(player.Position, 0, true), Vector(0, 0), nil)
 end
 
 --播放某实体的特殊动画，返回“空白动画”（效果实体对象）
 function Tools:PlayUniqueAnimation(entity, anim_name)
 	local sprite = entity:GetSprite()
 	local FILE = sprite:GetFilename()
-	local effect = Isaac.Spawn(EntityType.ENTITY_EFFECT, modEffectVariant.BLANK_ANIM, 0, entity.Position, Vector(0, 0), entity)
+	local effect = Isaac.Spawn(EntityType.ENTITY_EFFECT, modEffectVariant.BLANK_ANIM, 0, entity.Position, Vector.Zero, entity)
 	local effect_sprite = effect:GetSprite()
 	effect_sprite:Load(FILE, true)
 	effect_sprite:Play(anim_name)
@@ -389,17 +313,13 @@ end
 --	return (player.Position * Vector(-1, 1)) + Vector(640, 0)
 --end
 
-function Tools:GetEntityRenderScreenPos(entity, flip_X)		--参数flip_X在用于ModCallbacks.MC_POST_PLAYER_RENDER时设为true
+function Tools:GetEntityRenderScreenPos(entity)
 	local game = Game()
 	local IsMirrorWorld = (game:GetRoom():IsMirrorWorld())
 	local world_pos = entity.Position + entity.PositionOffset
 	local screen_pos = Isaac.WorldToScreen(world_pos)
 	if IsMirrorWorld then
-		if flip_X then
-			return Vector(screen_pos.X, screen_pos.Y)
-		else
-			return Vector(Isaac.GetScreenWidth() - screen_pos.X, screen_pos.Y)
-		end
+		return Vector(Isaac.GetScreenWidth() - screen_pos.X, screen_pos.Y)
 	else
 		return screen_pos
 	end
@@ -445,34 +365,6 @@ function Tools:CanAddWisp(player, use_flag)
 			or use_flag & UseFlag.USE_ALLOWWISPSPAWN > 0)
 end
 
---由dmg_flags判断是否为自伤，返回逻辑
-function Tools:IsSelfDamage(dmg_flags)
-	return dmg_flags & (DamageFlag.DAMAGE_RED_HEARTS | DamageFlag.DAMAGE_NO_PENALTIES) > 0
-end
-
---判断entity是否为幽灵类敌怪，返回逻辑
-function Tools:IsGhostEnemy(entity)
-	local ghost_enemy_list = {
-		EntityType.ENTITY_WIZOOB,
-		EntityType.ENTITY_THE_HAUNT,
-		EntityType.ENTITY_RED_GHOST,
-		EntityType.ENTITY_FORSAKEN,
-		EntityType.ENTITY_POLTY,
-		EntityType.ENTITY_CANDLER,
-		EntityType.ENTITY_DUST,
-		EntityType.ENTITY_RAINMAKER,
-		EntityType.ENTITY_HERETIC,
-		EntityType.ENTITY_CLUTCH,
-	}
-	for i, entity_type in ipairs(ghost_enemy_list) do
-		if entity and entity.Type == entity_type then
-			return true
-		end
-	end
-	return false
-end
-
-
 --判断entity是否为独立的敌怪，返回逻辑
 function Tools:IsIndividualEnemy(entity)
 	if entity and entity:IsActiveEnemy(true) and (not entity:HasEntityFlags(EntityFlag.FLAG_ICE_FROZEN)) then
@@ -486,18 +378,6 @@ end
 function Tools:CanTriggerEvent(entity, chance)
 	if entity and entity.DropSeed then
 		return entity.DropSeed % 10000 < chance * 100
-	end
-	return false
-end
-
---判断room_desc在chance%的几率下是否能触发事件，返回逻辑
-function Tools:RoomCanTriggerEvent(room_desc, chance)
-	if not Game():IsGreedMode() then
-		if room_desc and room_desc.SpawnSeed then
-			return room_desc.SpawnSeed % 10000 < chance * 100
-		end
-	else
-		return Random() % 10000 < chance * 100
 	end
 	return false
 end
@@ -534,120 +414,59 @@ function Tools:SetStartingCostume(player, costume)
 	player:AddNullCostume(costume)
 end
 
-local function ChangeSprite(player, sprite_path)
-	local sprite = player:GetSprite()
-	local anim = sprite:GetAnimation()
-	local frame = sprite:GetFrame()
-	local overlay_anim = sprite:GetOverlayAnimation()
-	local overlay_frame = sprite:GetOverlayFrame()
-	sprite:Load(sprite_path, true)
-	sprite:SetFrame(anim, frame)
-	sprite:SetOverlayFrame(overlay_anim, overlay_frame)
-end
-
---尝试为player添加初始外观costume（仅针对本Mod角色），引入default_sprite_path防止装扮丢失
-function Tools:TrySetStartingCostume(player, costume, starting_sprite_path)
-	local default_sprite_path = "gfx/001.000_player.anm2"
-	local used_path = starting_sprite_path
-	local should_use_default_costume = false
+--尝试为player添加初始外观costume，引入default_sprite_path防止矿层追逐战变光头
+function Tools:TrySetStartingCostume(player, costume, default_sprite_path)
 	if player.Variant == 0 then
 		local data = Tools:GetPlayerData(player)
-		if data.StartingCostumeData == nil then
-			data.StartingCostumeData = {
-				StartingSpritePath = starting_sprite_path,
-				UsingDefaultCostume = true,
-			}
-			Tools:SetStartingCostume(player, costume)
-		end
-		if player:GetEffects():HasCollectibleEffect(CollectibleType.COLLECTIBLE_MEGA_MUSH) and (not player:HasCurseMistEffect()) then
-			should_use_default_costume = true
-			used_path = default_sprite_path
-		end
-		if Common:Xor(data.StartingCostumeData.UsingDefaultCostume, should_use_default_costume) then
-			ChangeSprite(player, used_path)
-			data.StartingCostumeData.UsingDefaultCostume = should_use_default_costume
-		end
-	end
-end
-
-function Tools:StartingCostumeDataInit(is_continued)
-	if is_continued then
-		local NumPlayers = Game():GetNumPlayers()
-		for p = 0, NumPlayers - 1 do
-			local player = Game():GetPlayer(p)
-			local data = Tools:GetPlayerData(player)
-			if data.StartingCostumeData and data.StartingCostumeData.StartingSpritePath then
-				ChangeSprite(player, data.StartingCostumeData.StartingSpritePath)
+		--print("data.HasStartingCostume: " .. tostring(data.HasStartingCostume))
+		if data.HasStartingCostume then
+			if player:IsCoopGhost() then
+				--player:TryRemoveNullCostume(costume)
+				data.HasStartingCostume = false
 			end
-		end
-	end
-end
-ModRef:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Tools.StartingCostumeDataInit)
-
---小以扫数据相关
-function Tools:TryCheckEsauJrData(func)		--建议与ModCallbacks.MC_POST_UPDATE搭配使用
-	local should_check = Tools:GameData_GetAttribute("ShouldCheckEsauJrData")
-	if should_check then
-		local NumPlayers = Game():GetNumPlayers()
-		for p = 0, NumPlayers - 1 do
-			local player = Isaac.GetPlayer(p)
-			func(player)
-		end
-		Tools:GameData_ClearAttribute("ShouldCheckEsauJrData")
-	end
-end
-
-function Tools:EsauJrData_OnUseItem(collectible_type, rng, player, use_flags, active_slot, custom_var_data)
-	Tools:GameData_SetAttribute("ShouldCheckEsauJrData", true)
-end
-ModRef:AddCallback(ModCallbacks.MC_USE_ITEM, Tools.EsauJrData_OnUseItem, CollectibleType.COLLECTIBLE_ESAU_JR)
-
---取room_desc对应房间维度，返回整数
-function Tools:GetDimByRoomDesc(room_desc)
-	local level = Game():GetLevel()
-	for dim = 0, 2 do
-		local room_desc_in_dim = level:GetRoomByIdx(room_desc.SafeGridIndex, dim)
-		if GetPtrHash(room_desc) == GetPtrHash(room_desc_in_dim) then
-			return dim
-		end
-	end
-	return -1
-end
-
---单层随机房间索引，返回整数（每层重置）
-function Tools:RandomRoomIdx(include_starting_room, room_type_list, room_shape_list)
-	local game = Game()
-	local level = game:GetLevel()
-	local room_desc_list = level:GetRooms()
-	local starting_room_idx = level:GetStartingRoomIndex()
-	local uses_all_room_type = ((room_type_list == nil) or (#room_type_list == 0))
-	local uees_all_room_shape = ((room_shape_list == nil) or (#room_shape_list == 0))
-	local has_usable_room = false
-	local usable_room_idx_list = {}
-	for idx = 1, room_desc_list.Size do
-		local room_desc = room_desc_list:Get(idx)
-		if room_desc and room_desc.GridIndex >= 0 and Tools:GetDimByRoomDesc(room_desc) == 0 then
-			local room_cfg_room = room_desc.Data
-			local room_type = room_cfg_room.Type
-			local room_shape = room_cfg_room.Shape
-			if (uses_all_room_type or Common:IsInTable(room_type, room_type_list)) and (uees_all_room_shape or Common:IsInTable(room_shape, room_shape_list)) then
-				if room_desc.GridIndex ~= starting_room_idx or include_starting_room then
-					table.insert(usable_room_idx_list, room_desc.SafeGridIndex)
-					has_usable_room = true
+			if player:HasCurseMistEffect() then
+				if not data.HadCurseMistEffect then
+					data.HadCurseMistEffect = true
+					local sprite = player:GetSprite()
+					local anim = sprite:GetAnimation()
+					local frame = sprite:GetFrame()
+					local overlay_anim = sprite:GetOverlayAnimation()
+					local overlay_frame = sprite:GetOverlayFrame()
+					sprite:Load(default_sprite_path, true)
+					sprite:SetFrame(anim, frame)
+					sprite:SetOverlayFrame(overlay_anim, overlay_frame)
 				end
 			end
+		elseif not player:IsCoopGhost() then
+			Tools:SetStartingCostume(player, costume)
+			data.HasStartingCostume = true
 		end
 	end
-	if not has_usable_room then
-		return -1
-	end
-	local level_stage = level:GetStage()
-	local stage_seed = game:GetSeeds():GetStageSeed(level_stage)
-	local target_room_idx = (stage_seed % #usable_room_idx_list) + 1
-	--print(target_room_idx)
-	return usable_room_idx_list[target_room_idx]
 end
 
+function Tools:StartingCostume_OnInit(player)
+	if player.Variant == 0 then
+		local data = Tools:GetPlayerData(player)
+		data.HasStartingCostume = false
+		data.HadCurseMistEffect = false
+		--print("Tools:StartingCostume_OnInit")
+	end
+end
+ModRef:AddCallback(ModCallbacks.MC_POST_PLAYER_INIT, Tools.StartingCostume_OnInit, 0)
+--[[
+function Tools:StartingCostume_PostNewRoom()
+	local NumPlayers = Game():GetNumPlayers()
+	for p = 0, NumPlayers - 1 do
+		local player = Isaac.GetPlayer(p)
+		local data = Tools:GetPlayerData(player)
+		if data.HasStartingCostume then
+			data.HasStartingCostume = false
+			--print("new room")
+		end
+	end
+end
+ModRef:AddPriorityCallback(ModCallbacks.MC_POST_NEW_ROOM, CallbackPriority.LATE, Tools.StartingCostume_PostNewRoom)
+]]
 --取角色射击方向，返回矢量
 function Tools:GetShootingDir(player)
 	local dir = player:GetFireDirection()
@@ -666,16 +485,16 @@ function Tools:GetShootingDir(player)
 end
 
 function Tools:GetShootingJoystick(player)
-	if not player:AreControlsEnabled() then
-		return Vector(0, 0)
-	end
+    if not player:AreControlsEnabled() then
+        return Vector(0, 0)
+    end
 	local controller_idx = player.ControllerIndex
-	if Options.MouseControl and controller_idx == 0 then
-		if Input.IsMouseBtnPressed(controller_idx) then
-			return (Input.GetMousePosition(true) - player.Position):Normalized()
-		end
-	end
-	return player:GetShootingJoystick()
+    if Options.MouseControl and controller_idx == 0 then
+        if Input.IsMouseBtnPressed(controller_idx) then
+            return (Input.GetMousePosition(true) - player.Position):Normalized()
+        end
+    end
+    return player:GetShootingJoystick()
 end
 
 function Tools:GetActualShootingDir(player, analog)
@@ -909,14 +728,6 @@ do
 		end
 	end
 	ModRef:AddCallback(ModCallbacks.MC_POST_PLAYER_UPDATE, Tools.TapAndHold_OnUpdate)
-
-	function Tools:TapAndHold_OnTakeDamage(took_dmg, dmg_amount, dmg_flags, dmg_source, dmg_cd_frames)
-		local player = took_dmg:ToPlayer()
-		if player then
-			Tools:TapAndHold_SetInitStateForcibly_Shooting(player, true)
-		end
-	end
-	ModRef:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, Tools.TapAndHold_OnTakeDamage)
 end
 
 --角色道具相关：初始化数据
@@ -969,79 +780,6 @@ function Tools:AddCollectible_RunCallback(player)
 end
 ModRef:AddCallback(ModCallbacks.MC_POST_PLAYER_UPDATE, Tools.AddCollectible_RunCallback)
 
---无敌时间相关
-local function Immunity_GetImmunityData(player)
-	local data = Tools:GetPlayerData(player)
-	data.ImmunityData = data.ImmunityData or {
-		DamageCooldown = 0,
-		ShouldBlink = false,
-	}
-	return data.ImmunityData
-end
-
-function Tools:Immunity_GetDamageCooldown(player)
-	local data = Immunity_GetImmunityData(player)
-	return data.DamageCooldown or 0
-end
-
-function Tools:Immunity_SetDamageCooldown(player, value)
-	local data = Immunity_GetImmunityData(player)
-	data.DamageCooldown = math.max(0, value)
-end
-
-function Tools:Immunity_ModifyDamageCooldown(player, amount)
-	local data = Immunity_GetImmunityData(player)
-	if data.DamageCooldown then
-		data.DamageCooldown = math.max(0, data.DamageCooldown + amount)
-	end
-end
-
-function Tools:Immunity_ShouldBlink(player)
-	local data = Immunity_GetImmunityData(player)
-	return data.ShouldBlink
-end
-
-function Tools:Immunity_SetIfShouldBlink(player, value)
-	local data = Immunity_GetImmunityData(player)
-	data.ShouldBlink = value
-end
-
-function Tools:Immunity_AddImmuneEffect(player, cd, blink)
-	Tools:Immunity_ModifyDamageCooldown(player, cd)
-	player:SetMinDamageCooldown(1)
-	if not blink then
-		player:AddEntityFlags(EntityFlag.FLAG_NO_DAMAGE_BLINK)
-		Tools:Immunity_SetIfShouldBlink(player, false)
-	else
-		Tools:Immunity_SetIfShouldBlink(player, true)
-	end
-end
-
-function Tools:Immunity_PostPlayerUpdate(player)
-	local data = Tools:GetPlayerData(player)
-	if Tools:Immunity_GetDamageCooldown(player) > 0 then
-		player:SetMinDamageCooldown(1)
-		if not Tools:Immunity_ShouldBlink(player) then
-			player:AddEntityFlags(EntityFlag.FLAG_NO_DAMAGE_BLINK)
-		end
-	end
-end
-ModRef:AddCallback(ModCallbacks.MC_POST_PLAYER_UPDATE, Tools.Immunity_PostPlayerUpdate)
-
-function Tools:Immunity_PostPlayerEffectUpdate(player)
-	Tools:Immunity_ModifyDamageCooldown(player, -1)
-end
-ModRef:AddCallback(ModCallbacks.MC_POST_PEFFECT_UPDATE, Tools.Immunity_PostPlayerEffectUpdate)
-
-function Tools:Immunity_PostNewRoom()
-	local NumPlayers = Game():GetNumPlayers()
-	for p = 0, NumPlayers - 1 do
-		local player = Game():GetPlayer(p)
-		Tools:Immunity_SetDamageCooldown(player, 0)
-	end
-end
-ModRef:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, Tools.Immunity_PostNewRoom)
-
 --贪婪模式相关：初始化数据
 function Tools:Greed_GameDataInit()
 	if Soul.TempData.GameData["GreedModeWaveCount"] == nil then
@@ -1052,7 +790,7 @@ ModRef:AddCallback(ModCallbacks.MC_POST_UPDATE, Tools.Greed_GameDataInit)
 
 --贪婪模式相关：运行回调函数
 function Tools:Greed_RunCallback()
-	if (Game():IsGreedMode()) then
+    if (Game():IsGreedMode()) then
 		local level = Game():GetLevel()
 		local current_wave = level.GreedModeWave
 		local GreedModeWaveCount = (Soul.TempData.GameData["GreedModeWaveCount"] or 0)
@@ -1097,10 +835,7 @@ function Tools:GameData_AddAttribute(key, starting_value)
 	end
 end
 
-function Tools:GameData_GetAttribute(key, try_init_as_table)
-	if try_init_as_table then
-		Soul.TempData.GameData[key] = Soul.TempData.GameData[key] or {}
-	end
+function Tools:GameData_GetAttribute(key)
 	return Soul.TempData.GameData[key]
 end
 
@@ -1124,61 +859,5 @@ end
 function Tools:GameData_ClearAttribute(key)
 	Soul.TempData.GameData[key] = nil
 end
-
---取道具数据
-function Tools:Global_GetCollectibleData(collectible_type)
-	local data = Tools:GameData_GetAttribute("CollectibleData", true)
-	local item_config_item = Isaac.GetItemConfig():GetCollectible(collectible_type)
-	if item_config_item and item_config_item.Name then
-		local idx = "Collectible:" .. string.gsub(item_config_item.Name, "%s", "_")
-		data[idx] = data[idx] or {}
-		return data[idx]
-	end
-	local idx_null = "Collectible:Null"
-	data[idx_null] = data[idx_null] or {}
-	return data[idx_null]
-end
-
---取饰品数据
-function Tools:Global_GetTrinketData(trinket_type)
-	local data = Tools:GameData_GetAttribute("TrinketData", true)
-	local item_config_item = Isaac.GetItemConfig():GetTrinket(trinket_type)
-	if item_config_item and item_config_item.Name then
-		local idx = "Trinket:" .. string.gsub(item_config_item.Name, "%s", "_")
-		data[idx] = data[idx] or {}
-		return data[idx]
-	end
-	local idx_null = "Trinket:Null"
-	data[idx_null] = data[idx_null] or {}
-	return data[idx_null]
-end
-
---取卡牌数据
-function Tools:Global_GetCardData(card)
-	local data = Tools:GameData_GetAttribute("CardData", true)
-	local item_config_card = Isaac.GetItemConfig():GetCard(card)
-	if item_config_card and item_config_card.Name then
-		local idx = "Card:" .. string.gsub(item_config_card.Name, "%s", "_")
-		data[idx] = data[idx] or {}
-		return data[idx]
-	end
-	local idx_null = "Card:Null"
-	data[idx_null] = data[idx_null] or {}
-	return data[idx_null]
-end
-
---取一般拾取物数据
-function Tools:Global_GetPickupData(pickup_variant)
-	local data = Tools:GameData_GetAttribute("PickupData", true)
-	if pickup_variant == nil or pickup_variant <= 0 then
-		local idx_null = "Pickup:Null"
-		data[idx_null] = data[idx_null] or {}
-		return data[idx_null]
-	end
-	local idx = "Pickup:" .. tostring(pickup_variant)
-	data[idx] = data[idx] or {}
-	return data[idx]
-end
-
 
 return Tools

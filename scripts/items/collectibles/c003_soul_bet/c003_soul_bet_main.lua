@@ -1,4 +1,5 @@
-local SoulBet = {}
+local Main = {}
+local SoulBet = include("scripts/items/collectibles/c003_soul_bet/c003_soul_bet_api")
 local ModRef = Soul
 
 local Common = Soul.Global.Common
@@ -11,62 +12,34 @@ local modCollectibleType = Soul.modCollectibleType
 
 local function RandomCollectibleByQuality_Ranged(player, rng, min_quality, max_quality)
 	local quality = Maths:RandomInt_Ranged(min_quality, max_quality, rng)
-	Tools:RandomCollectible_ByQuality(player, quality, rng)
+	Tools:RandomCollectible_ByQuality(player, quality, rng, true)
 end
 
-function SoulBet:PlayerCollectibleDataInit(player)
-	local data = Tools:GetPlayerCollectibleData(player, modCollectibleType.COLLECTIBLE_SOUL_BET)
-	if data.EnemyCount == nil then
-		data.EnemyCount = 0
-	end
+function Main:PostUpdate()
+	SoulBet:SoulBetDataInit()
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_PLAYER_UPDATE, SoulBet.PlayerCollectibleDataInit, 0)
+ModRef:AddCallback(ModCallbacks.MC_POST_UPDATE, Main.PostUpdate)
 
-function SoulBet:GetEnemyCount(player)
-	local data = Tools:GetPlayerCollectibleData(player, modCollectibleType.COLLECTIBLE_SOUL_BET)
-	return data.EnemyCount or 0
-end
-
-function SoulBet:ResetEnemyCount(player)
-	local data = Tools:GetPlayerCollectibleData(player, modCollectibleType.COLLECTIBLE_SOUL_BET)
-	data.EnemyCount = 0
-end
-
-function SoulBet:ModifyEnemyCount(player, amount)
-	local data = Tools:GetPlayerCollectibleData(player, modCollectibleType.COLLECTIBLE_SOUL_BET)
-	if data.EnemyCount then
-		data.EnemyCount = math.max(0, data.EnemyCount + amount)
-	end
-end
-
-function SoulBet:PostNPCDeath(npc)
-	local NumPlayers = Game():GetNumPlayers()
+function Main:PostNPCDeath(npc)
 	if (not npc:HasEntityFlags(EntityFlag.FLAG_ICE_FROZEN)) and (not EntityRef(npc).IsFriendly) then
-		for p = 0, NumPlayers - 1 do
-			local player = Isaac.GetPlayer(p)
-			SoulBet:ModifyEnemyCount(player, 1)
-		end
+		SoulBet:ModifyEnemyCount(1)
 		return
 	end
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, SoulBet.PostNPCDeath, nil)
+ModRef:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, Main.PostNPCDeath, nil)
 
-function SoulBet:PostEntityKill(entity)
-	local NumPlayers = Game():GetNumPlayers()
+function Main:PostEntityKill(entity)
 	if entity:IsActiveEnemy(true) and entity:HasEntityFlags(EntityFlag.FLAG_ICE) and (not entity:HasEntityFlags(EntityFlag.FLAG_ICE_FROZEN)) then
 		local npc = entity:ToNPC()
 		if not EntityRef(npc).IsFriendly then
-			for p = 0, NumPlayers - 1 do
-				local player = Isaac.GetPlayer(p)
-				SoulBet:ModifyEnemyCount(player, 1)
-			end
+			SoulBet:ModifyEnemyCount(1)
 			return
 		end
 	end
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_ENTITY_KILL, SoulBet.PostEntityKill, nil)
+ModRef:AddCallback(ModCallbacks.MC_POST_ENTITY_KILL, Main.PostEntityKill, nil)
 
-function SoulBet:OnNewLevel()
+function Main:OnNewLevel()
 	local NumPlayers = Game():GetNumPlayers()
 	for p = 0, NumPlayers - 1 do
 		local player = Isaac.GetPlayer(p)
@@ -84,7 +57,7 @@ function SoulBet:OnNewLevel()
 			else
 				player:AddCoins(-15)
 			end
-			if SoulBet:GetEnemyCount(player) >= 35 then
+			if SoulBet:GetEnemyCount() >= SoulBet.EnemyCountDefaultCritValue then
 				for i = 1, 2 do
 					RandomCollectibleByQuality_Ranged(player, rng, 3, 4)
 				end
@@ -112,14 +85,9 @@ function SoulBet:OnNewLevel()
 				player:AnimateSad()
 			end
 		end
-		SoulBet:ResetEnemyCount(player)
+		SoulBet:ResetEnemyCount()
 	end
 end
-ModRef:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, SoulBet.OnNewLevel)
+ModRef:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, Main.OnNewLevel)
 
-function SoulBet:PreAddCollectible(collectible_type, rng, player)
-	Translation:ShowDefaultCollectibleText(collectible_type)
-end
-ModRef:AddCallback(SoulCallbacks.SOULC_PRE_ADD_COLLECTIBLE, SoulBet.PreAddCollectible, modCollectibleType.COLLECTIBLE_SOUL_BET)
-
-return SoulBet
+return Main

@@ -4,10 +4,12 @@ local ModRef = Soul
 local Common = Soul.Global.Common
 local Tools = Soul.Global.Tools
 
+local Fonts = Soul.Fonts
 local SoulCallbacks = Soul.SoulCallbacks
 local modPlayerType = Soul.modPlayerType
 local modCollectibleType = Soul.modCollectibleType
 local modTrinketType = Soul.modTrinketType
+local modEffectVariant = Soul.modEffectVariant
 local modCard = Soul.modCard
 
 local BirthrightName = {
@@ -27,8 +29,8 @@ local BirthrightDesc = {
 local CollectibleConfigText = {
 	["zh"] = {
 		--[modCollectibleType.XXX] = {Name = "", Desc = "",},
-		[modCollectibleType.COLLECTIBLE_SOUL_CRYSTAL] = {Name = "桃灵之魄", Desc = "？？？",},
-		[modCollectibleType.COLLECTIBLE_WAY_TO_STEAL_SOUL] = {Name = "盗取灵魂的方法", Desc = "？？？",},
+		[modCollectibleType.COLLECTIBLE_SOUL_CRYSTAL] = {Name = "桃灵之魄", Desc = "释放着可疑的光辉",},
+		[modCollectibleType.COLLECTIBLE_WAY_TO_STEAL_SOUL] = {Name = "盗取灵魂的方法", Desc = "你有所的灵魂是都属于我们",},		--注：这条简介是故意写成这样的
 		[modCollectibleType.COLLECTIBLE_SOUL_BET] = {Name = "灵魂赌约", Desc = "筹码",},
 		[modCollectibleType.COLLECTIBLE_SOUL_CONTRACT] = {Name = "灵魂契约", Desc = "信物",},
 	},
@@ -37,6 +39,7 @@ local CollectibleConfigText = {
 local TrinketConfigText = {
 	["zh"] = {
 		--[modTrinketType.XXX] = {Name = "", Desc = "",},
+		[modTrinketType.TRINKET_RED_CRYSTAL_NECKLACE] = {Name = "红水晶吊坠", Desc = "神盾护符",},
 	},
 }
 
@@ -142,6 +145,7 @@ ModRef:AddCallback(ModCallbacks.MC_POST_UPDATE, Translation.CheckQueuedItem)
 function Translation:PreAddItem_RunCallback(player)
 	local lang_fixed = Translation:FixLanguage(Options.Language)
 	local data = GetPlayerTranslationData(player)
+	local HUD = Game():GetHUD()
 	if not player:IsItemQueueEmpty() then
 		local item_config_item = player.QueuedItem.Item
 		if item_config_item then
@@ -149,14 +153,14 @@ function Translation:PreAddItem_RunCallback(player)
 			if item_config_item:IsCollectible() then
 				if not ItemTranslation_DONE then
 					local collectible_type = item_ID
-					--if CollectibleConfigText[lang_fixed][collectible_type] ~= nil then
-					--	HUD:ShowItemText(CollectibleConfigText[lang_fixed][collectible_type].Name, CollectibleConfigText[lang_fixed][collectible_type].Desc)
 					if collectible_type == CollectibleType.COLLECTIBLE_BIRTHRIGHT then
 						local player_type = player:GetPlayerType()
 						if BirthrightName[lang_fixed] and BirthrightDesc[lang_fixed] and BirthrightDesc[lang_fixed][player_type] then
-							local HUD = Game():GetHUD()
 							HUD:ShowItemText(BirthrightName[lang_fixed], BirthrightDesc[lang_fixed][player_type])
 						end
+					end
+					if CollectibleConfigText[lang_fixed] and CollectibleConfigText[lang_fixed][collectible_type] then
+						HUD:ShowItemText(CollectibleConfigText[lang_fixed][collectible_type].Name, CollectibleConfigText[lang_fixed][collectible_type].Desc)
 					end
 					Isaac.RunCallbackWithParam(SoulCallbacks.SOULC_PRE_ADD_COLLECTIBLE, collectible_type, collectible_type, player:GetCollectibleRNG(collectible_type), player)
 					ItemTranslation_DONE = true
@@ -164,6 +168,9 @@ function Translation:PreAddItem_RunCallback(player)
 			elseif item_config_item:IsTrinket() then
 				if not ItemTranslation_DONE then
 					local trinket_type = item_ID
+					if TrinketConfigText[lang_fixed][trinket_type] ~= nil then
+						HUD:ShowItemText(TrinketConfigText[lang_fixed][trinket_type].Name, TrinketConfigText[lang_fixed][trinket_type].Desc)
+					end
 					Isaac.RunCallbackWithParam(SoulCallbacks.SOULC_PRE_ADD_TRINKET, trinket_type, trinket_type, player:GetTrinketRNG(trinket_type), player)
 					ItemTranslation_DONE = true
 				end
@@ -185,7 +192,9 @@ end
 ModRef:AddPriorityCallback(ModCallbacks.MC_PRE_PICKUP_COLLISION, CallbackPriority.LATE, Translation.PrePickupCollision)
 
 function Translation:PreAddCard_RunCallback(player)
+	local lang_fixed = Translation:FixLanguage(Options.Language)
 	local data = GetPlayerTranslationData(player)
+	local HUD = Game():GetHUD()
 	if data.QueuedCard then
 		if (not data.QueuedCard:Exists()) or data.QueuedCard:IsDead() then
 			local card = data.QueuedCard.SubType
@@ -193,9 +202,12 @@ function Translation:PreAddCard_RunCallback(player)
 				local current_card = player:GetCard(slot_ID)
 				if current_card == card then
 					if not ItemTranslation_DONE then
+						if CardConfigText[lang_fixed][card] ~= nil then
+							HUD:ShowItemText(CardConfigText[lang_fixed][card].Name, CardConfigText[lang_fixed][card].Desc)
+						end
 						Isaac.RunCallbackWithParam(SoulCallbacks.SOULC_PRE_ADD_CARD, card, card, player)
 						ItemTranslation_DONE = true
-						return
+						--return
 					end
 				end
 			end
@@ -204,5 +216,48 @@ function Translation:PreAddCard_RunCallback(player)
 	end
 end
 ModRef:AddCallback(ModCallbacks.MC_POST_PLAYER_UPDATE, Translation.PreAddCard_RunCallback)
+
+function Translation:RenderFloatingText(text, pos, kcolor, dir, timeout, lang)
+	local text_table = {}
+	if text == nil then
+		text_table = {"",}
+	elseif type(text) == "number" or type(text) == "string" then
+		text_table = {tostring(text),}
+	elseif type(text) == "table" then
+		text_table = text
+	end
+	kcolor = kcolor or KColor(1, 1, 1, 1)
+	dir = dir or Vector(0, -1.5)
+	timeout = timeout or 45
+	timeout = math.max(1, timeout)
+	lang = Translation:FixLanguage(lang)
+	local effect = Isaac.Spawn(EntityType.ENTITY_EFFECT, modEffectVariant.BLANK_ANIM, 0, pos, dir, nil):ToEffect()
+	effect.LifeSpan = timeout
+	effect.Timeout = timeout
+	
+	local data = Tools:GetEffectData(effect)
+	data.FloatingTextData = data.FloatingTextData or {}
+	data.FloatingTextData.Text = text_table
+	data.FloatingTextData.Language = lang
+	data.FloatingTextData.KColor = kcolor
+end
+
+function Translation:FloatingText_OnRender(effect, offset)
+	local data = Tools:GetEffectData(effect)
+	if data.FloatingTextData and effect.Timeout >= 0 then
+		local font = Fonts[Translation:FixLanguage(data.FloatingTextData.Language)] or Fonts["en"]
+		local text_table = data.FloatingTextData.Text or {}
+		local pos = Isaac.WorldToScreen(effect.Position)
+		local kcolor = data.FloatingTextData.KColor
+		local init_alpha = kcolor.Alpha
+		if effect.Timeout < effect.LifeSpan * 0.5 then
+			kcolor.Alpha = init_alpha * (effect.Timeout / (effect.LifeSpan * 0.5))
+		end
+		for i = 1, #text_table do
+			font:DrawStringUTF8(text_table[i], pos.X - 128, pos.Y - 45 - #text_table * 15 + i * 15, kcolor, 256, true)
+		end
+	end
+end
+ModRef:AddCallback(ModCallbacks.MC_POST_EFFECT_RENDER, Translation.FloatingText_OnRender, modEffectVariant.BLANK_ANIM)
 
 return Translation

@@ -1,10 +1,20 @@
-local modCollectibleType = Soul.modCollectibleType
+local CM_Desc_Texts_en_us = {}
 
-EIDtexts["en_us"].Collectibles = {
-	--[[modCollectibleType.] = {
+local modCollectibleType = Soul.modCollectibleType
+local modTrinketType = Soul.modTrinketType
+local modPlayerType = Soul.modPlayerType
+
+local lang = "en_us"
+
+CM_Desc_Texts_en_us.Collectibles = {
+	--[[	
+	[modCollectibleType.XXX] = {
 		Name = "",
 		Description = "",
-	},]]
+		bookOfVirtuesWisps = "",
+		bookOfBelialBuffs = "",
+	},
+	]]
 	[modCollectibleType.COLLECTIBLE_SOUL_CRYSTAL] = {
 		Name = "Soul Crystal",
 		Description = "{{Rune}} Drops a Soul Stone",
@@ -22,3 +32,12 @@ EIDtexts["en_us"].Collectibles = {
 		Description = "When entering a new floor:#Grants 1 item with a quality greater than 1 if the player kills 35 enemies or more on the previous floor#Grants a random card otherwise",
 	},
 }
+
+CM_Desc_Texts_en_us.Trinkets = {
+	[modTrinketType.TRINKET_RED_CRYSTAL_NECKLACE] = {
+		Name = "Red Crystal Necklace",
+		Description = "¡ü {{Luck}} +1 Luck up#Has a 7% chance to make player invincible for 7 second when entering a new room",
+	},
+}
+
+return CM_Desc_Texts_en_us

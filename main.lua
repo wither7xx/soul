@@ -30,15 +30,16 @@ Soul.modPlayerType = {
 	PLAYER_TAOYUFEI = Isaac.GetPlayerTypeByName("Taoyufei", false),
 }
 
-Soul.modTrinketType = {}
+Soul.modTrinketType = {
+	TRINKET_RED_CRYSTAL_NECKLACE = Isaac.GetTrinketIdByName("Red Crystal Necklace"),
+}
+
 
 Soul.TempData = {}
-Soul.TempData.PlayerData_Static = {}
-Soul.TempData.PlayerData_Static["UserNum"] = 0
-Soul.TempData.PlayerData_UserRegister = {}
 Soul.TempData.PlayerData = {}
 Soul.TempData.GameData = {}
 Soul.TempData.NPCData = {}
+Soul.TempData.EffectData = {}
 
 Soul.SoulCallbacks = {
 	SOULC_DOUBLE_TAP = "SOULC_DOUBLE_TAP",								--回调参数：button_action（整数）；函数参数：button_action（整数），player（角色实体对象）；返回值类型：无
@@ -58,20 +59,34 @@ Soul.Global.Tools = include("scripts/!global/tools")
 Soul.Global.Translation = include("scripts/!global/translation")
 Soul.Global.ModData = include("scripts/!global/mod_data")
 
-local modPlayerType = Soul.modPlayerType
-Soul.Characters = {
-	[modPlayerType.PLAYER_TAOYUFEI] = include("scripts/characters/001_taoyufei"),
-}
 
 local modCollectibleType = Soul.modCollectibleType
 Soul.Collectibles = {
-	[modCollectibleType.COLLECTIBLE_SOUL_CRYSTAL] = include("scripts/items/collectibles/001_soul_crystal"),
-	[modCollectibleType.COLLECTIBLE_WAY_TO_STEAL_SOUL] = include("scripts/items/collectibles/002_way_to_steal_soul"),
-	[modCollectibleType.COLLECTIBLE_SOUL_BET] = include("scripts/items/collectibles/003_soul_bet"),
-	[modCollectibleType.COLLECTIBLE_SOUL_CONTRACT] = include("scripts/items/collectibles/004_soul_contract"),
+	[modCollectibleType.COLLECTIBLE_SOUL_CRYSTAL] = include("scripts/items/collectibles/c001_soul_crystal/c001_soul_crystal_main"),
+	[modCollectibleType.COLLECTIBLE_WAY_TO_STEAL_SOUL] = include("scripts/items/collectibles/c002_way_to_steal_soul/c002_way_to_steal_soul_main"),
+	[modCollectibleType.COLLECTIBLE_SOUL_BET] = include("scripts/items/collectibles/c003_soul_bet/c003_soul_bet_main"),
+	[modCollectibleType.COLLECTIBLE_SOUL_CONTRACT] = include("scripts/items/collectibles/c004_soul_contract/c004_soul_contract_main"),
+}
+
+local modTrinketType = Soul.modTrinketType
+Soul.Trinkets = {
+	[modTrinketType.TRINKET_RED_CRYSTAL_NECKLACE] = include("scripts/items/trinkets/t001_red_crystal_necklace/t001_red_crystal_necklace_main"),
+}
+
+local modPlayerType = Soul.modPlayerType
+Soul.Characters = {
+	[modPlayerType.PLAYER_TAOYUFEI] = include("scripts/characters/p001_taoyufei/p001_taoyufei_main"),
 }
 
 Soul.CompatibleMods = include("compatible mods/main")
+
+function Soul:TryReloadShaders()
+	local players = Isaac.FindByType(EntityType.ENTITY_PLAYER)
+    if #players <= 0 then
+        Isaac.ExecuteCommand("reloadshaders")
+    end
+end
+Soul:AddCallback(ModCallbacks.MC_POST_PLAYER_INIT, Soul.TryReloadShaders)
 
 --调试专用
 --[[
